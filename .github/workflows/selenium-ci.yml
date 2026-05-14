@@ -1,11 +1,13 @@
 name: Selenium Tests - SauceLabs
 
-# Déclenche le pipeline à chaque push sur main ou pull request
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   selenium:
@@ -13,23 +15,23 @@ jobs:
 
     steps:
 
-      # Étape 1 : Récupérer ton code depuis GitHub
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Étape 2 : Installer Java 17
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: temurin
 
-      # Étape 3 : Installer Google Chrome
       - name: Install Chrome
         uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
 
-      # Étape 4 : Mettre en cache les dépendances Maven
-      # (évite de re-télécharger Selenium, Cucumber etc. à chaque run)
+      - name: Check Chrome version
+        run: google-chrome --version
+
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
@@ -38,18 +40,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      # Étape 5 : Lancer tous les tests Cucumber + Selenium
-      - name: Run Selenium tests
-        run: mvn test
+      - name: Build project
+        run: mvn compile test-compile -e
 
-      # Étape 6 : Sauvegarder les rapports de test
-      # (s'exécute TOUJOURS, même si les tests échouent)
+      - name: Run Selenium tests
+        run: mvn test -e
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cucumber-test-results
-          path: |
-            target/surefire-reports/
-            target/cucumber-reports/
+          path: target/
           retention-days: 7
